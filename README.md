@@ -1,3 +1,9 @@
+Credits
+=================================
+
+- The development of this package is based on the work done by Petar Korponaić (https://github.com/perak)
+- The original code can be found here: https://github.com/perak/meteor-mqtt-collection
+
 mqtt-collection package for Meteor
 ==================================
 
