@@ -7,7 +7,7 @@ Package.describe({
 });
 
 Npm.depends({
-  "mqtt": "1.2.0"
+  "mqtt": "2.18.8"
 });
 
 Package.onUse(function(api) {
