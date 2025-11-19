@@ -7,12 +7,22 @@ Package.describe({
 });
 
 Npm.depends({
-    "mqtt": "4.2.5"
+    "mqtt": "4.2.5",
+    "chai": "4.3.10"
 });
 
 Package.onUse(function (api) {
     api.versionsFrom("1.0");
+    api.use("underscore");
     api.addFiles("lib/mqtt.js", "server");
     api.addFiles("lib/mqtt_collection.js", "server");
     api.export("mqtt");
+});
+
+Package.onTest(function (api) {
+    api.use("ecmascript");
+    api.use("mongo");
+    api.use("plopp:mqtt-collection");
+    api.use("meteortesting:mocha");
+    api.mainModule("tests/mqtt-collection-tests.js", "server");
 });
