@@ -30,7 +30,7 @@ describe('MQTT Collection', function () {
         const start = Date.now();
         while (Date.now() - start < timeout) {
             if (await conditionFn()) return;
-            await new Promise(resolve => setTimeout(resolve, interval));
+            await new Promise((resolve) => setTimeout(resolve, interval));
         }
     }
 
@@ -64,7 +64,9 @@ describe('MQTT Collection', function () {
     describe('Insert Mode', function () {
         it('should insert a new document when MQTT message is received', async function () {
             // Connect with insert mode
-            TestCollection.mqttConnect('mqtt://test.broker', ['test/topic'], { insert: true });
+            TestCollection.mqttConnect('mqtt://test.broker', ['test/topic'], {
+                insert: true,
+            });
 
             // Simulate connection
             mockMqttClient.emit('connect');
@@ -74,31 +76,63 @@ describe('MQTT Collection', function () {
 
             // Simulate receiving a message
             const testMessage = { data: 'test value' };
-            await mockMqttClient.emit('message', 'test/topic', Buffer.from(JSON.stringify(testMessage)));
+            await mockMqttClient.emit(
+                'message',
+                'test/topic',
+                Buffer.from(JSON.stringify(testMessage))
+            );
 
             // Wait for the document to be inserted
-            await waitFor(async () => (await TestCollection.find({ topic: 'test/topic' }).countAsync()) >= 1);
+            await waitFor(
+                async () =>
+                    (await TestCollection.find({
+                        topic: 'test/topic',
+                    }).countAsync()) >= 1
+            );
 
             // Verify the document was inserted
-            const docs = await TestCollection.find({ topic: 'test/topic' }).fetchAsync();
+            const docs = await TestCollection.find({
+                topic: 'test/topic',
+            }).fetchAsync();
             expect(docs).to.have.lengthOf(1);
             expect(docs[0].topic).to.equal('test/topic');
             expect(docs[0].message).to.deep.equal(testMessage);
         });
 
         it('should insert multiple documents for multiple messages', async function () {
-            TestCollection.mqttConnect('mqtt://test.broker', ['test/topic'], { insert: true });
+            TestCollection.mqttConnect('mqtt://test.broker', ['test/topic'], {
+                insert: true,
+            });
             mockMqttClient.emit('connect');
 
             // Send multiple messages
-            await mockMqttClient.emit('message', 'test/topic', Buffer.from(JSON.stringify({ id: 1 })));
-            await mockMqttClient.emit('message', 'test/topic', Buffer.from(JSON.stringify({ id: 2 })));
-            await mockMqttClient.emit('message', 'test/topic', Buffer.from(JSON.stringify({ id: 3 })));
+            await mockMqttClient.emit(
+                'message',
+                'test/topic',
+                Buffer.from(JSON.stringify({ id: 1 }))
+            );
+            await mockMqttClient.emit(
+                'message',
+                'test/topic',
+                Buffer.from(JSON.stringify({ id: 2 }))
+            );
+            await mockMqttClient.emit(
+                'message',
+                'test/topic',
+                Buffer.from(JSON.stringify({ id: 3 }))
+            );
 
-            await waitFor(async () => (await TestCollection.find({ topic: 'test/topic' }).countAsync()) >= 3);
+            await waitFor(
+                async () =>
+                    (await TestCollection.find({
+                        topic: 'test/topic',
+                    }).countAsync()) >= 3
+            );
 
             // Verify all documents were inserted
-            const docs = await TestCollection.find({ topic: 'test/topic' }).fetchAsync();
+            const docs = await TestCollection.find({
+                topic: 'test/topic',
+            }).fetchAsync();
 
             expect(docs).to.have.lengthOf(3);
         });
@@ -106,59 +140,111 @@ describe('MQTT Collection', function () {
         it('should enforce insertLimit by removing oldest documents', async function () {
             TestCollection.mqttConnect('mqtt://test.broker', ['test/topic'], {
                 insert: true,
-                insertLimit: 2
+                insertLimit: 2,
             });
             mockMqttClient.emit('connect');
 
             // Insert 3 messages when limit is 2
-            await mockMqttClient.emit('message', 'test/topic', Buffer.from(JSON.stringify({ id: 1 })));
-            await waitFor(async () => (await TestCollection.find({ topic: 'test/topic' }).countAsync()) >= 1);
+            await mockMqttClient.emit(
+                'message',
+                'test/topic',
+                Buffer.from(JSON.stringify({ id: 1 }))
+            );
+            await waitFor(
+                async () =>
+                    (await TestCollection.find({
+                        topic: 'test/topic',
+                    }).countAsync()) >= 1
+            );
 
-            await mockMqttClient.emit('message', 'test/topic', Buffer.from(JSON.stringify({ id: 2 })));
-            await waitFor(async () => (await TestCollection.find({ topic: 'test/topic' }).countAsync()) >= 2);
+            await mockMqttClient.emit(
+                'message',
+                'test/topic',
+                Buffer.from(JSON.stringify({ id: 2 }))
+            );
+            await waitFor(
+                async () =>
+                    (await TestCollection.find({
+                        topic: 'test/topic',
+                    }).countAsync()) >= 2
+            );
 
-            await mockMqttClient.emit('message', 'test/topic', Buffer.from(JSON.stringify({ id: 3 })));
+            await mockMqttClient.emit(
+                'message',
+                'test/topic',
+                Buffer.from(JSON.stringify({ id: 3 }))
+            );
             await waitFor(async () => {
-                const docs = await TestCollection.find({ topic: 'test/topic' }).fetchAsync();
-                return docs.some(d => d.message.id === 3) && docs.length === 2;
+                const docs = await TestCollection.find({
+                    topic: 'test/topic',
+                }).fetchAsync();
+                return (
+                    docs.some((d) => d.message.id === 3) && docs.length === 2
+                );
             });
 
             // Should only have 2 documents (oldest removed)
-            const docs = await TestCollection.find({ topic: 'test/topic' }).fetchAsync();
+            const docs = await TestCollection.find({
+                topic: 'test/topic',
+            }).fetchAsync();
             expect(docs).to.have.lengthOf(2);
 
             // First message should be gone, should have messages 2 and 3
-            const ids = docs.map(d => d.message.id).sort();
+            const ids = docs.map((d) => d.message.id).sort();
             expect(ids).to.deep.equal([2, 3]);
         });
 
         it('should handle raw messages when raw option is true', async function () {
             TestCollection.mqttConnect('mqtt://test.broker', ['test/topic'], {
                 insert: true,
-                raw: true
+                raw: true,
             });
             mockMqttClient.emit('connect');
 
             const rawMessage = 'plain text message';
-            await mockMqttClient.emit('message', 'test/topic', Buffer.from(rawMessage));
-            await waitFor(async () => (await TestCollection.find({ topic: 'test/topic' }).countAsync()) >= 1);
+            await mockMqttClient.emit(
+                'message',
+                'test/topic',
+                Buffer.from(rawMessage)
+            );
+            await waitFor(
+                async () =>
+                    (await TestCollection.find({
+                        topic: 'test/topic',
+                    }).countAsync()) >= 1
+            );
 
-            const docs = await TestCollection.find({ topic: 'test/topic' }).fetchAsync();
+            const docs = await TestCollection.find({
+                topic: 'test/topic',
+            }).fetchAsync();
             expect(docs).to.have.lengthOf(1);
             expect(docs[0].message).to.equal(rawMessage);
         });
 
         it('should handle invalid JSON gracefully', async function () {
-            TestCollection.mqttConnect('mqtt://test.broker', ['test/topic'], { insert: true });
+            TestCollection.mqttConnect('mqtt://test.broker', ['test/topic'], {
+                insert: true,
+            });
             mockMqttClient.emit('connect');
 
             // Send invalid JSON (without raw mode)
             const invalidJson = '{invalid json}';
-            await mockMqttClient.emit('message', 'test/topic', Buffer.from(invalidJson));
-            await waitFor(async () => (await TestCollection.find({ topic: 'test/topic' }).countAsync()) >= 1);
+            await mockMqttClient.emit(
+                'message',
+                'test/topic',
+                Buffer.from(invalidJson)
+            );
+            await waitFor(
+                async () =>
+                    (await TestCollection.find({
+                        topic: 'test/topic',
+                    }).countAsync()) >= 1
+            );
 
             // Should still insert, but message will be the string itself
-            const docs = await TestCollection.find({ topic: 'test/topic' }).fetchAsync();
+            const docs = await TestCollection.find({
+                topic: 'test/topic',
+            }).fetchAsync();
             expect(docs).to.have.lengthOf(1);
             expect(docs[0].message).to.equal(invalidJson);
         });
@@ -172,11 +258,22 @@ describe('MQTT Collection', function () {
 
             // Simulate receiving a message
             const testMessage = { data: 'test value' };
-            await mockMqttClient.emit('message', 'test/topic', Buffer.from(JSON.stringify(testMessage)));
-            await waitFor(async () => (await TestCollection.find({ topic: 'test/topic' }).countAsync()) >= 1);
+            await mockMqttClient.emit(
+                'message',
+                'test/topic',
+                Buffer.from(JSON.stringify(testMessage))
+            );
+            await waitFor(
+                async () =>
+                    (await TestCollection.find({
+                        topic: 'test/topic',
+                    }).countAsync()) >= 1
+            );
 
             // Verify the document was upserted
-            const docs = await TestCollection.find({ topic: 'test/topic' }).fetchAsync();
+            const docs = await TestCollection.find({
+                topic: 'test/topic',
+            }).fetchAsync();
             expect(docs).to.have.lengthOf(1);
             expect(docs[0].topic).to.equal('test/topic');
             expect(docs[0].message).to.deep.equal(testMessage);
@@ -187,43 +284,76 @@ describe('MQTT Collection', function () {
             mockMqttClient.emit('connect');
 
             // Send multiple messages to same topic
-            await mockMqttClient.emit('message', 'test/topic', Buffer.from(JSON.stringify({ value: 1 })));
+            await mockMqttClient.emit(
+                'message',
+                'test/topic',
+                Buffer.from(JSON.stringify({ value: 1 }))
+            );
             await waitFor(async () => {
-                const doc = await TestCollection.findOneAsync({ topic: 'test/topic' });
+                const doc = await TestCollection.findOneAsync({
+                    topic: 'test/topic',
+                });
                 return doc && doc.message && doc.message.value === 1;
             });
 
-            await mockMqttClient.emit('message', 'test/topic', Buffer.from(JSON.stringify({ value: 2 })));
+            await mockMqttClient.emit(
+                'message',
+                'test/topic',
+                Buffer.from(JSON.stringify({ value: 2 }))
+            );
             await waitFor(async () => {
-                const doc = await TestCollection.findOneAsync({ topic: 'test/topic' });
+                const doc = await TestCollection.findOneAsync({
+                    topic: 'test/topic',
+                });
                 return doc && doc.message && doc.message.value === 2;
             });
 
-            await mockMqttClient.emit('message', 'test/topic', Buffer.from(JSON.stringify({ value: 3 })));
+            await mockMqttClient.emit(
+                'message',
+                'test/topic',
+                Buffer.from(JSON.stringify({ value: 3 }))
+            );
             await waitFor(async () => {
-                const doc = await TestCollection.findOneAsync({ topic: 'test/topic' });
+                const doc = await TestCollection.findOneAsync({
+                    topic: 'test/topic',
+                });
                 return doc && doc.message && doc.message.value === 3;
             });
 
             // Should only have 1 document (upserted)
-            const docs = await TestCollection.find({ topic: 'test/topic' }).fetchAsync();
+            const docs = await TestCollection.find({
+                topic: 'test/topic',
+            }).fetchAsync();
             expect(docs).to.have.lengthOf(1);
             expect(docs[0].message.value).to.equal(3); // Latest value
         });
 
         it('should create separate documents for different topics', async function () {
-            TestCollection.mqttConnect('mqtt://test.broker', ['topic1', 'topic2']);
+            TestCollection.mqttConnect('mqtt://test.broker', [
+                'topic1',
+                'topic2',
+            ]);
             mockMqttClient.emit('connect');
 
-            await mockMqttClient.emit('message', 'topic1', Buffer.from(JSON.stringify({ source: 'topic1' })));
-            await mockMqttClient.emit('message', 'topic2', Buffer.from(JSON.stringify({ source: 'topic2' })));
-            await waitFor(async () => (await TestCollection.find({}).countAsync()) >= 2);
+            await mockMqttClient.emit(
+                'message',
+                'topic1',
+                Buffer.from(JSON.stringify({ source: 'topic1' }))
+            );
+            await mockMqttClient.emit(
+                'message',
+                'topic2',
+                Buffer.from(JSON.stringify({ source: 'topic2' }))
+            );
+            await waitFor(
+                async () => (await TestCollection.find({}).countAsync()) >= 2
+            );
 
             const docs = await TestCollection.find({}).fetchAsync();
             expect(docs).to.have.lengthOf(2);
 
-            const topic1Doc = docs.find(d => d.topic === 'topic1');
-            const topic2Doc = docs.find(d => d.topic === 'topic2');
+            const topic1Doc = docs.find((d) => d.topic === 'topic1');
+            const topic2Doc = docs.find((d) => d.topic === 'topic2');
 
             expect(topic1Doc.message.source).to.equal('topic1');
             expect(topic2Doc.message.source).to.equal('topic2');
@@ -240,16 +370,24 @@ describe('MQTT Collection', function () {
             await TestCollection.insertAsync({
                 topic: 'outgoing/topic',
                 message: broadcastMessage,
-                broadcast: true
+                broadcast: true,
             });
 
             // Wait for the broadcast to process
-            await waitFor(async () => mockMqttClient.publishedMessages && mockMqttClient.publishedMessages.length >= 1);
+            await waitFor(
+                async () =>
+                    mockMqttClient.publishedMessages &&
+                    mockMqttClient.publishedMessages.length >= 1
+            );
 
             // Verify the message was published
             expect(mockMqttClient.publishedMessages).to.have.lengthOf(1);
-            expect(mockMqttClient.publishedMessages[0].topic).to.equal('outgoing/topic');
-            expect(mockMqttClient.publishedMessages[0].message).to.equal(JSON.stringify(broadcastMessage));
+            expect(mockMqttClient.publishedMessages[0].topic).to.equal(
+                'outgoing/topic'
+            );
+            expect(mockMqttClient.publishedMessages[0].message).to.equal(
+                JSON.stringify(broadcastMessage)
+            );
         });
 
         it('should handle string messages for broadcast', async function () {
@@ -260,13 +398,19 @@ describe('MQTT Collection', function () {
             await TestCollection.insertAsync({
                 topic: 'outgoing/topic',
                 message: 'simple string',
-                broadcast: true
+                broadcast: true,
             });
 
-            await waitFor(async () => mockMqttClient.publishedMessages && mockMqttClient.publishedMessages.length >= 1);
+            await waitFor(
+                async () =>
+                    mockMqttClient.publishedMessages &&
+                    mockMqttClient.publishedMessages.length >= 1
+            );
 
             expect(mockMqttClient.publishedMessages).to.have.lengthOf(1);
-            expect(mockMqttClient.publishedMessages[0].message).to.equal('simple string');
+            expect(mockMqttClient.publishedMessages[0].message).to.equal(
+                'simple string'
+            );
         });
 
         it('should remove broadcast document after publishing', async function () {
@@ -276,11 +420,13 @@ describe('MQTT Collection', function () {
             const insertId = await TestCollection.insertAsync({
                 topic: 'outgoing/topic',
                 message: { data: 'test' },
-                broadcast: true
+                broadcast: true,
             });
 
             await waitFor(async () => {
-                const doc = await TestCollection.findOneAsync({ _id: insertId });
+                const doc = await TestCollection.findOneAsync({
+                    _id: insertId,
+                });
                 return !doc;
             });
 
@@ -299,11 +445,19 @@ describe('MQTT Collection', function () {
         });
 
         it('should subscribe to multiple topics on connect', function () {
-            TestCollection.mqttConnect('mqtt://test.broker', ['topic1', 'topic2', 'topic3']);
+            TestCollection.mqttConnect('mqtt://test.broker', [
+                'topic1',
+                'topic2',
+                'topic3',
+            ]);
             mockMqttClient.emit('connect');
 
             expect(mockMqttClient.subscribedTopics).to.have.lengthOf(3);
-            expect(mockMqttClient.subscribedTopics).to.include.members(['topic1', 'topic2', 'topic3']);
+            expect(mockMqttClient.subscribedTopics).to.include.members([
+                'topic1',
+                'topic2',
+                'topic3',
+            ]);
         });
 
         it('should disconnect properly', function () {
